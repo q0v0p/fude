@@ -1,0 +1,73 @@
+name: "fude — brush calligraphy SVG"
+description: "Write Japanese text or today's date as an animated brush-calligraphy SVG, stroke by stroke in the correct stroke order."
+author: "q0v0p"
+branding:
+  icon: "feather"
+  color: "gray-dark"
+
+inputs:
+  text:
+    description: 'Text to write. Use "\n" for a line break. Leave empty to write the date.'
+    required: false
+    default: ""
+  date:
+    description: 'Date to write when text is empty: "today" or YYYY-MM-DD.'
+    required: false
+    default: "today"
+  timezone:
+    description: "Time zone that decides what today is."
+    required: false
+    default: "Asia/Tokyo"
+  era:
+    description: 'Year style for dates: "reiwa" (令和八年) or "western" (二〇二六年).'
+    required: false
+    default: "reiwa"
+  sub:
+    description: "Small line under the text. For dates it defaults to the year and weekday."
+    required: false
+    default: ""
+  seal:
+    description: 'One character stamped as a red seal. For dates it defaults to the weekday. Use "none" for no seal.'
+    required: false
+    default: ""
+  theme:
+    description: "washi | sumi | clear | clear-dark"
+    required: false
+    default: "washi"
+  speed:
+    description: "Writing speed multiplier."
+    required: false
+    default: "1.0"
+  width:
+    description: "Width of the SVG in pixels."
+    required: false
+    default: "760"
+  output:
+    description: "Where to write the SVG."
+    required: false
+    default: "dist/fude.svg"
+
+runs:
+  using: composite
+  steps:
+    - name: Install fonttools
+      shell: bash
+      run: python3 -m pip install --quiet --disable-pip-version-check fonttools
+
+    - name: Write SVG
+      shell: bash
+      env:
+        FUDE_TEXT: ${{ inputs.text }}
+        FUDE_DATE: ${{ inputs.date }}
+        FUDE_SUB: ${{ inputs.sub }}
+        FUDE_SEAL: ${{ inputs.seal }}
+      run: |
+        args=(--theme "${{ inputs.theme }}" --speed "${{ inputs.speed }}" --width "${{ inputs.width }}" -o "${{ inputs.output }}")
+        if [ -n "$FUDE_TEXT" ]; then
+          args+=(--text "$FUDE_TEXT")
+        else
+          args+=(--date "$FUDE_DATE" --tz "${{ inputs.timezone }}" --era "${{ inputs.era }}")
+        fi
+        [ -n "$FUDE_SUB" ] && args+=(--sub "$FUDE_SUB")
+        if [ "$FUDE_SEAL" = "none" ]; then args+=(--no-seal); elif [ -n "$FUDE_SEAL" ]; then args+=(--seal "$FUDE_SEAL"); fi
+        python3 "${{ github.action_path }}/fude.py" "${args[@]}"

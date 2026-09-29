@@ -1,0 +1,57 @@
+name: Demo
+
+# Writes today's date with this action every day and publishes it to the output branch,
+# which the README shows. Also serves as a test of the action itself.
+on:
+  schedule:
+    - cron: "5 15 * * *" # 00:05 JST
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: demo
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        with:
+          output: dist/today.svg
+
+      - uses: ./
+        with:
+          theme: sumi
+          output: dist/today-sumi.svg
+
+      - uses: ./
+        with:
+          text: "一期一会"
+          sub: "いちごいちえ"
+          seal: "縁"
+          theme: sumi
+          output: dist/ichigo.svg
+
+      - name: Publish to output branch
+        working-directory: dist
+        run: |
+          git init -q -b output
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "Demo $(TZ=Asia/Tokyo date +%F)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" output
+
+      # scheduled workflows in public repos stop after 60 days without activity
+      - name: Keep schedule alive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable demo.yml --repo "${{ github.repository }}"
